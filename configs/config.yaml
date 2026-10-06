@@ -1,0 +1,5 @@
+scraper:
+  user_agent: "recipe-recommender/0.1 (+https://github.com/itachka3005/recipe-recommender)"
+  delay_seconds: 1.5
+  timeout_seconds: 20
+  max_retries: 3
