@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Parse downloaded recipe pages")
-    parser.add_argument("site", choices=["menu1000"])
+    parser.add_argument("site", choices=["menu1000", "povarenok"])
     parser.add_argument(
         "--reparse", action="store_true", help="Parse already parsed pages again"
     )
@@ -32,7 +32,7 @@ def main() -> None:
         for recipe_id, url in todo:
             path = html_path(root, site.name, recipe_id)
             try:
-                html = gzip.decompress(path.read_bytes()).decode("utf-8")
+                html = gzip.decompress(path.read_bytes())
                 recipe = site.parse(html, recipe_id, url)
             except (OSError, ValueError, ParseError) as exc:
                 logger.warning("Failed %s: %s", recipe_id, exc)

@@ -2,7 +2,18 @@ import logging
 import re
 from collections.abc import Iterator
 
+from bs4 import BeautifulSoup, Tag
+
 from src.scraper.http import DisallowedByRobots, FetchError, PoliteClient
+from src.scraper.models import Recipe
+from src.scraper.parsing import (
+    ParseError,
+    clean_ingredient,
+    first_number,
+    own_props,
+    parse_duration,
+    prop_value,
+)
 from src.scraper.sitemap import sitemap_locs
 from src.scraper.sites.base import Site
 
@@ -15,6 +26,8 @@ PAGINATOR = re.compile(
     r'new Paginator\("paginator_1",\s*(\d+),.*?"([^"]+)",\s*"([^"]*)"',
     re.DOTALL,
 )
+RECIPE_TYPE = re.compile(r"schema\.org/Recipe\b")
+PER_100G = re.compile(r"100\s*г")
 
 
 def extract_recipe_ids(html: str) -> set[str]:
@@ -34,6 +47,28 @@ def page_url(prefix: str, suffix: str, page: int) -> str:
 
 def recipe_url(recipe_id: str) -> str:
     return f"{BASE}/recipes/show/{recipe_id}/"
+
+
+def kcal_per_100g(root: Tag) -> float | None:
+    """Read kcal from the '100 г блюда' row of the nutrition table.
+
+    The itemprop="calories" value is for the whole dish, so it is not used.
+    """
+    nutrition = root.find(attrs={"itemprop": "nutrition"})
+    if nutrition is None:
+        return None
+    for title in nutrition.find_all("td", class_="nae-title"):
+        if not PER_100G.search(title.get_text(" ", strip=True)):
+            continue
+        row = title.find_parent("tr")
+        values = row.find_next_sibling("tr") if row else None
+        if values is None:
+            return None
+        for cell in values.find_all("td"):
+            text = cell.get_text(" ", strip=True)
+            if "ккал" in text:
+                return first_number(text)
+    return None
 
 
 class Povarenok(Site):
@@ -61,6 +96,32 @@ class Povarenok(Site):
                 "Category %d/%d: +%d recipes (total %d) %s",
                 i, len(categories), len(seen) - before, len(seen), category,
             )
+
+    def parse(self, html: str | bytes, recipe_id: str, url: str) -> Recipe:
+        soup = BeautifulSoup(html, "lxml")
+        root = soup.find(attrs={"itemtype": RECIPE_TYPE})
+        if root is None or not own_props(root, "recipeIngredient"):
+            raise ParseError("no recipe microdata")
+
+        names = own_props(root, "name")
+        times = own_props(root, "totalTime")
+        yields = own_props(root, "recipeYield")
+        servings = first_number(prop_value(yields[0])) if yields else None
+        ingredients = [
+            clean_ingredient(prop_value(el))
+            for el in own_props(root, "recipeIngredient")
+        ]
+
+        return Recipe(
+            site=self.name,
+            recipe_id=recipe_id,
+            url=url,
+            name=prop_value(names[0]) if names else "",
+            ingredients=[i for i in ingredients if i],
+            total_minutes=parse_duration(prop_value(times[0])) if times else None,
+            kcal_per_100g=kcal_per_100g(root),
+            servings=int(servings) if servings else None,
+        )
 
     def _categories(self, client: PoliteClient) -> list[str]:
         html = self._fetch(client, self.sitemap)

@@ -12,6 +12,10 @@ class Site(ABC):
     def discover(self, client: PoliteClient) -> Iterator[tuple[str, str]]:
         """Yield (recipe_id, url) for every recipe found on the site."""
 
-    def parse(self, html: str, recipe_id: str, url: str) -> Recipe:
-        """Turn a recipe page into a Recipe."""
-        raise NotImplementedError
+    @abstractmethod
+    def parse(self, html: str | bytes, recipe_id: str, url: str) -> Recipe:
+        """Turn a recipe page into a Recipe.
+
+        Raw bytes are preferred: BeautifulSoup detects the page encoding
+        from <meta charset>, which differs between sites.
+        """

@@ -7,7 +7,7 @@ SELECT
     site,
     COUNT(*),
     AVG(total_minutes IS NULL),
-    AVG(calories IS NULL),
+    AVG(kcal_per_100g IS NULL),
     AVG(servings IS NULL),
     AVG(json_array_length(ingredients)),
     MAX(json_array_length(ingredients))

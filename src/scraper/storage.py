@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS recipes (
     name TEXT NOT NULL,
     ingredients TEXT NOT NULL,
     total_minutes INTEGER,
-    calories REAL,
+    kcal_per_100g REAL,
     servings INTEGER,
     PRIMARY KEY (site, recipe_id)
 );
@@ -95,7 +95,7 @@ class Storage:
     def save_recipe(self, recipe: Recipe) -> None:
         self.conn.execute(
             "INSERT OR REPLACE INTO recipes "
-            "(site, recipe_id, url, name, ingredients, total_minutes, calories, "
+            "(site, recipe_id, url, name, ingredients, total_minutes, kcal_per_100g, "
             "servings) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 recipe.site,
@@ -104,7 +104,7 @@ class Storage:
                 recipe.name,
                 json.dumps(recipe.ingredients, ensure_ascii=False),
                 recipe.total_minutes,
-                recipe.calories,
+                recipe.kcal_per_100g,
                 recipe.servings,
             ),
         )

@@ -61,7 +61,7 @@ def test_modern_page(site):
     assert recipe.name == "Тестовый суп"
     assert recipe.ingredients == ["Картофель - 3 шт.", "Морковь - 1 шт."]
     assert recipe.total_minutes == 90
-    assert recipe.calories == 120
+    assert recipe.kcal_per_100g  == 120
     assert recipe.servings == 4
 
 
@@ -74,7 +74,7 @@ def test_legacy_page_without_recipe_scope(site):
     assert recipe.name == "Старый пирог"
     assert recipe.ingredients == ["Яйца - 3 шт."]
     assert recipe.total_minutes == 80
-    assert recipe.calories is None
+    assert recipe.kcal_per_100g  is None
 
 
 def test_page_without_recipe_raises(site):

@@ -4,6 +4,7 @@ from bs4 import Tag
 
 DURATION = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$")
 NUMBER = re.compile(r"\d+(?:[.,]\d+)?")
+TRAILING_DASH = " —–-"
 
 
 class ParseError(Exception):
@@ -27,11 +28,20 @@ def first_number(value: str | None) -> float | None:
     return float(match.group(0).replace(",", ".")) if match else None
 
 
+def collapse_spaces(text: str) -> str:
+    return " ".join(text.split())
+
+
 def prop_value(el: Tag) -> str:
-    content = el.get("content")
-    if content:
-        return str(content).strip()
-    return el.get_text(" ", strip=True)
+    for attr in ("content", "datetime"):
+        value = el.get(attr)
+        if value:
+            return collapse_spaces(str(value))
+    return collapse_spaces(el.get_text(" ", strip=True))
+
+
+def clean_ingredient(text: str) -> str:
+    return text.rstrip(TRAILING_DASH).strip()
 
 
 def own_props(scope: Tag, name: str) -> list[Tag]:
