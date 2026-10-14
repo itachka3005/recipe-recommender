@@ -74,17 +74,15 @@ class Storage:
             "WHERE site = ? AND status = 'new' ORDER BY RANDOM() LIMIT ?",
             (site, limit),
         ).fetchall()
-    def downloaded(self, site: str, reparse: bool = False) -> list[tuple[str, str]]:
-        statuses = ("downloaded", "parsed", "parse_failed") if reparse else (
-            "downloaded",
-        )
+    def downloaded(
+        self, site: str, statuses: tuple[str, ...] = ("downloaded",)
+    ) -> list[tuple[str, str]]:
         placeholders = ", ".join("?" for _ in statuses)
         return self.conn.execute(
             f"SELECT recipe_id, url FROM urls "
             f"WHERE site = ? AND status IN ({placeholders})",
             (site, *statuses),
         ).fetchall()
-
     def set_status(self, site: str, recipe_id: str, status: str) -> None:
         self.conn.execute(
             "UPDATE urls SET status = ? WHERE site = ? AND recipe_id = ?",

@@ -72,3 +72,34 @@ def test_old_page_without_time_and_yield(site):
 def test_page_without_recipe_raises(site):
     with pytest.raises(ParseError):
         parse(site, "<html><body><h1>Статья</h1></body></html>")
+
+NEW_TEMPLATE = """
+<html><head><meta charset="windows-1251"></head><body>
+<h1>Шарлотка на кефире</h1>
+<div class="ingredients-bl"><ul>
+  <li><a href="#"><span itemprop="name">Кефир</span></a>
+      — <span itemprop="amount">200 мл</span></li>
+  <li><a href="#"><span itemprop="name">Мука</span></a>
+      — </li>
+</ul></div>
+</body></html>
+"""
+
+PRINT_VERSION = """
+<html><head><meta charset="windows-1251"></head><body>
+<h1>Главная>Рецепты>версия для печати</h1>
+</body></html>
+"""
+
+
+def test_new_template_without_recipe_scope(site):
+    recipe = parse(site, NEW_TEMPLATE)
+    assert recipe.name == "Шарлотка на кефире"
+    assert recipe.ingredients == ["Кефир — 200 мл", "Мука"]
+    assert recipe.total_minutes is None
+    assert recipe.kcal_per_100g is None
+
+
+def test_print_version_is_rejected(site):
+    with pytest.raises(ParseError):
+        parse(site, PRINT_VERSION)

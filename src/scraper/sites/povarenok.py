@@ -100,26 +100,38 @@ class Povarenok(Site):
     def parse(self, html: str | bytes, recipe_id: str, url: str) -> Recipe:
         soup = BeautifulSoup(html, "lxml")
         root = soup.find(attrs={"itemtype": RECIPE_TYPE})
-        if root is None or not own_props(root, "recipeIngredient"):
-            raise ParseError("no recipe microdata")
 
-        names = own_props(root, "name")
-        times = own_props(root, "totalTime")
-        yields = own_props(root, "recipeYield")
+        if root is not None and own_props(root, "recipeIngredient"):
+            names = own_props(root, "name")
+            name = prop_value(names[0]) if names else ""
+            ingredient_els = own_props(root, "recipeIngredient")
+            times = own_props(root, "totalTime")
+            yields = own_props(root, "recipeYield")
+            scope = root
+        else:
+            # Newer template: no Recipe scope, ingredients live in
+            # div.ingredients-bl and the title is the page <h1>.
+            block = soup.find("div", class_="ingredients-bl")
+            if block is None:
+                raise ParseError("no recipe markup")
+            h1 = soup.find("h1")
+            name = prop_value(h1) if h1 else ""
+            ingredient_els = block.find_all("li")
+            times = soup.find_all(attrs={"itemprop": "totalTime"})
+            yields = soup.find_all(attrs={"itemprop": "recipeYield"})
+            scope = soup
+
         servings = first_number(prop_value(yields[0])) if yields else None
-        ingredients = [
-            clean_ingredient(prop_value(el))
-            for el in own_props(root, "recipeIngredient")
-        ]
+        ingredients = [clean_ingredient(prop_value(el)) for el in ingredient_els]
 
         return Recipe(
             site=self.name,
             recipe_id=recipe_id,
             url=url,
-            name=prop_value(names[0]) if names else "",
+            name=name,
             ingredients=[i for i in ingredients if i],
             total_minutes=parse_duration(prop_value(times[0])) if times else None,
-            kcal_per_100g=kcal_per_100g(root),
+            kcal_per_100g=kcal_per_100g(scope),
             servings=int(servings) if servings else None,
         )
 

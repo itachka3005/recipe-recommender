@@ -18,6 +18,9 @@ def main() -> None:
     parser.add_argument(
         "--reparse", action="store_true", help="Parse already parsed pages again"
     )
+    parser.add_argument(
+        "--retry-failed", action="store_true", help="Parse previously failed pages"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
@@ -25,8 +28,15 @@ def main() -> None:
     site = build_site(args.site, cfg["sites"][args.site])
     root = Path(cfg["storage"]["html_dir"])
 
+    if args.reparse:
+        statuses = ("downloaded", "parsed", "parse_failed")
+    elif args.retry_failed:
+        statuses = ("downloaded", "parse_failed")
+    else:
+        statuses = ("downloaded",)
+
     with Storage(cfg["storage"]["db_path"]) as storage:
-        todo = storage.downloaded(site.name, reparse=args.reparse)
+        todo = storage.downloaded(site.name, statuses)
         logger.info("Parsing %d pages for %s", len(todo), site.name)
         parsed = failed = 0
         for recipe_id, url in todo:
