@@ -1,5 +1,6 @@
 import sqlite3
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA = """
@@ -18,7 +19,7 @@ CREATE TABLE IF NOT EXISTS urls (
 class Storage:
     def __init__(self, path: str | Path) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(path)
+        self.conn = sqlite3.connect(path, timeout=30)
         self.conn.executescript(SCHEMA)
 
     def __enter__(self) -> "Storage":
@@ -53,3 +54,25 @@ class Storage:
         return self.conn.execute(
             "SELECT site, status, COUNT(*) FROM urls GROUP BY site, status"
         ).fetchall()
+    def pending(self, site: str, limit: int) -> list[tuple[str, str]]:
+        return self.conn.execute(
+            "SELECT recipe_id, url FROM urls "
+            "WHERE site = ? AND status = 'new' ORDER BY RANDOM() LIMIT ?",
+            (site, limit),
+        ).fetchall()
+
+    def mark(
+        self, site: str, recipe_id: str, status: str, http_status: int | None = None
+    ) -> None:
+        self.conn.execute(
+            "UPDATE urls SET status = ?, http_status = ?, fetched_at = ? "
+            "WHERE site = ? AND recipe_id = ?",
+            (
+                status,
+                http_status,
+                datetime.now(timezone.utc).isoformat(),
+                site,
+                recipe_id,
+            ),
+        )
+        self.conn.commit()    

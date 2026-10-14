@@ -5,11 +5,13 @@ scraper:
   max_retries: 3
 
 storage:
+storage:
   db_path: data/raw/recipes.db
+  html_dir: data/raw/html
 
 sites:
   menu1000:
     sitemap_index: https://1000.menu/sitemap.xml
   povarenok:
     sitemap: https://www.povarenok.ru/sitemap.xml
-    max_pages_per_category: 10
+    max_pages_per_category: 5
