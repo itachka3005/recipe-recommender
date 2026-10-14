@@ -1,7 +1,10 @@
+import json
 import sqlite3
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
+
+from src.scraper.models import Recipe
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS urls (
@@ -11,6 +14,17 @@ CREATE TABLE IF NOT EXISTS urls (
     status TEXT NOT NULL DEFAULT 'new',
     http_status INTEGER,
     fetched_at TEXT,
+    PRIMARY KEY (site, recipe_id)
+);
+CREATE TABLE IF NOT EXISTS recipes (
+    site TEXT NOT NULL,
+    recipe_id TEXT NOT NULL,
+    url TEXT NOT NULL,
+    name TEXT NOT NULL,
+    ingredients TEXT NOT NULL,
+    total_minutes INTEGER,
+    calories REAL,
+    servings INTEGER,
     PRIMARY KEY (site, recipe_id)
 );
 """
@@ -60,7 +74,41 @@ class Storage:
             "WHERE site = ? AND status = 'new' ORDER BY RANDOM() LIMIT ?",
             (site, limit),
         ).fetchall()
+    def downloaded(self, site: str, reparse: bool = False) -> list[tuple[str, str]]:
+        statuses = ("downloaded", "parsed", "parse_failed") if reparse else (
+            "downloaded",
+        )
+        placeholders = ", ".join("?" for _ in statuses)
+        return self.conn.execute(
+            f"SELECT recipe_id, url FROM urls "
+            f"WHERE site = ? AND status IN ({placeholders})",
+            (site, *statuses),
+        ).fetchall()
 
+    def set_status(self, site: str, recipe_id: str, status: str) -> None:
+        self.conn.execute(
+            "UPDATE urls SET status = ? WHERE site = ? AND recipe_id = ?",
+            (status, site, recipe_id),
+        )
+        self.conn.commit()
+
+    def save_recipe(self, recipe: Recipe) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO recipes "
+            "(site, recipe_id, url, name, ingredients, total_minutes, calories, "
+            "servings) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                recipe.site,
+                recipe.recipe_id,
+                recipe.url,
+                recipe.name,
+                json.dumps(recipe.ingredients, ensure_ascii=False),
+                recipe.total_minutes,
+                recipe.calories,
+                recipe.servings,
+            ),
+        )
+        self.set_status(recipe.site, recipe.recipe_id, "parsed")
     def mark(
         self, site: str, recipe_id: str, status: str, http_status: int | None = None
     ) -> None:
