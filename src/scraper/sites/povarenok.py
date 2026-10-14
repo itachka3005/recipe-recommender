@@ -12,7 +12,8 @@ BASE = "https://www.povarenok.ru"
 CATEGORY_URL = re.compile(r"/recipes/[^?]+\?searchid=\d+$")
 RECIPE_ID = re.compile(r"/recipes/show/(\d+)/")
 PAGINATOR = re.compile(
-    r'new Paginator\("paginator_1",\s*(\d+),.*?"([^"]+)",\s*"([^"]*)"'
+    r'new Paginator\("paginator_1",\s*(\d+),.*?"([^"]+)",\s*"([^"]*)"',
+    re.DOTALL,
 )
 
 

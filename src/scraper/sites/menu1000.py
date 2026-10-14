@@ -1,5 +1,10 @@
+import logging
+import re
+from collections.abc import Iterator
+
 from bs4 import BeautifulSoup
 
+from src.scraper.http import PoliteClient
 from src.scraper.models import Recipe
 from src.scraper.parsing import (
     ParseError,
@@ -8,11 +13,6 @@ from src.scraper.parsing import (
     parse_duration,
     prop_value,
 )
-import logging
-import re
-from collections.abc import Iterator
-
-from src.scraper.http import PoliteClient
 from src.scraper.sitemap import sitemap_locs
 from src.scraper.sites.base import Site
 
