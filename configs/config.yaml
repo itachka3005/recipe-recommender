@@ -3,3 +3,13 @@ scraper:
   delay_seconds: 1.5
   timeout_seconds: 20
   max_retries: 3
+
+storage:
+  db_path: data/raw/recipes.db
+
+sites:
+  menu1000:
+    sitemap_index: https://1000.menu/sitemap.xml
+  povarenok:
+    sitemap: https://www.povarenok.ru/sitemap.xml
+    max_pages_per_category: 10

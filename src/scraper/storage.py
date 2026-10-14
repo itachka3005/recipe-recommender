@@ -1,0 +1,41 @@
+import sqlite3
+from collections.abc import Iterable
+from pathlib import Path
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS urls (
+    site TEXT NOT NULL,
+    recipe_id TEXT NOT NULL,
+    url TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    http_status INTEGER,
+    fetched_at TEXT,
+    PRIMARY KEY (site, recipe_id)
+);
+"""
+
+
+class Storage:
+    def __init__(self, path: str | Path) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(path)
+        self.conn.executescript(SCHEMA)
+
+    def __enter__(self) -> "Storage":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.conn.close()
+
+    def add_urls(self, site: str, items: Iterable[tuple[str, str]]) -> int:
+        cursor = self.conn.executemany(
+            "INSERT OR IGNORE INTO urls (site, recipe_id, url) VALUES (?, ?, ?)",
+            ((site, recipe_id, url) for recipe_id, url in items),
+        )
+        self.conn.commit()
+        return cursor.rowcount
+
+    def count_by_status(self) -> list[tuple[str, str, int]]:
+        return self.conn.execute(
+            "SELECT site, status, COUNT(*) FROM urls GROUP BY site, status"
+        ).fetchall()
