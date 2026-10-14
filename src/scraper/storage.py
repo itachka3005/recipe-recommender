@@ -27,10 +27,24 @@ class Storage:
     def __exit__(self, *exc) -> None:
         self.conn.close()
 
-    def add_urls(self, site: str, items: Iterable[tuple[str, str]]) -> int:
+    def add_urls(
+        self, site: str, items: Iterable[tuple[str, str]], batch_size: int = 500
+    ) -> int:
+        added = 0
+        batch: list[tuple[str, str, str]] = []
+        for recipe_id, url in items:
+            batch.append((site, recipe_id, url))
+            if len(batch) >= batch_size:
+                added += self._insert(batch)
+                batch.clear()
+        if batch:
+            added += self._insert(batch)
+        return added
+
+    def _insert(self, rows: list[tuple[str, str, str]]) -> int:
         cursor = self.conn.executemany(
             "INSERT OR IGNORE INTO urls (site, recipe_id, url) VALUES (?, ?, ?)",
-            ((site, recipe_id, url) for recipe_id, url in items),
+            rows,
         )
         self.conn.commit()
         return cursor.rowcount
